@@ -1,8 +1,8 @@
 # 80a4d751d4ca21e8
 
 Pre-requisites: Use Debian Buster
- 
-1.Install Docker and Compose
+
+1. Install Docker and Compose
 ============================================================
 user@server:/$ sudo apt update && sudo apt install docker.io docker-compose
 
