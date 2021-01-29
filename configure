@@ -1,0 +1,107 @@
+########### Begin configuration script ###########
+#
+# ========================================
+# Set constants
+# ========================================
+SITE="/var/www/site"
+SQLFILE="/var/tmp/init.sql"
+SITECFG="/etc/nginx/sites-available/default"
+SCRIPT="/var/www/script.py"
+
+# ========================================
+# Install software
+# ========================================
+echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+apt-get update && apt-get install -y postgresql-11 python3-psycopg2 nginx libnginx-mod-http-lua
+service postgresql restart
+
+# ========================================
+# Configure PostgreSQL
+# ========================================
+touch $SQLFILE; chown root:postgres $SQLFILE; chmod 640 $SQLFILE
+
+cat > $SQLFILE <<'EOF'
+CREATE DATABASE dbase;
+CREATE USER dbuser WITH ENCRYPTED PASSWORD 'dbpass';
+GRANT ALL PRIVILEGES ON DATABASE dbase TO dbuser;
+\c dbase;
+CREATE TABLE "args" (
+    "id" bigserial PRIMARY KEY,
+    "arg1" character varying(32) NOT NULL,
+    "arg2" character varying(32) NOT NULL,
+    "arg3" character varying(32) NOT NULL
+);
+ALTER TABLE args OWNER TO dbuser;
+EOF
+
+su -l postgres -c "psql -f $SQLFILE"
+rm -f $SQLFILE
+
+# ========================================
+# Configure Web server
+# ========================================
+mkdir -p $SITE/tmp; chown -R root:www-data $SITE; chmod 750 $SITE; chmod 750 $SITE/tmp
+touch $SCRIPT; chown root:www-data $SCRIPT; chmod 750 $SCRIPT
+
+cat > $SITECFG <<'EOF'
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name _;
+        root /var/www/site;
+        index index.html index.htm;
+        location / {
+                try_files $uri $uri/ =404;
+                limit_except POST { deny  all; }
+                content_by_lua_block {
+                      ngx.req.read_body()
+                      local arguments = ngx.req.get_post_args()
+                      if arguments then
+                         args = " "
+                         for key, val in pairs(arguments) do
+                              args = args.." "..val
+                         end
+                      os.execute("/var/www/script.py "..args)
+                      end 
+                 }
+        }
+}
+EOF
+
+# ========================================
+# Create logging script.py
+# ========================================
+cat > $SCRIPT <<'EOF'
+#!/usr/bin/python3
+#
+#import urllib.parse as urlparse
+#from urllib.parse import parse_qs
+#url=str(sys.argv[0])
+## Example: url = 'http://www.example.site/submit?arg1=hellow&arg2=happy&arg3=world'
+#parsed = urlparse.urlparse(url)
+## Example: print(parse_qs(parsed.query)['arg1'])
+
+import sys
+import psycopg2
+sql = """INSERT INTO args VALUES(DEFAULT,%s,%s,%s);"""
+conn = None
+try:
+    conn = psycopg2.connect(database="dbase", user='dbuser', password='dbpass', host='localhost')
+    cur = conn.cursor()
+    cur.execute(sql, (sys.argv[3],sys.argv[1],sys.argv[2]))
+    conn.commit()
+    cur.close()
+except (Exception, psycopg2.DatabaseError) as error:
+    print(error)
+finally:
+    if conn is not None:
+        conn.close()
+EOF
+
+# ========================================
+# Clean up end exit
+# ========================================
+service nginx restart
+rm -f /tmp/configure && exit 0
+#
+########### End configuration script ###########
