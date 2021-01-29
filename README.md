@@ -3,20 +3,16 @@
 Pre-requisites: Use Debian Buster
 
 1. Install Docker and Compose
-============================================================
 user@server:/$ sudo apt update && sudo apt install docker.io docker-compose
 
 2. Create a script for the docker image configuration
-============================================================
 user@server:/$ sudo mkdir /root/test
 user@server:~/$ sudo nano /root/configure
 
 3. Create local volume for the database files 
-============================================================
 user@server:/$ sudo docker volume create dbase
 
 4. Build the docker image:
-============================================================
 user@server:/$ sudo docker build -t test:latest -f- . <<EOF
 FROM debian:stable
 LABEL maintainer="test@example.com"
@@ -27,7 +23,6 @@ CMD /usr/bin/pg_ctlcluster 11 main start && /usr/sbin/nginx && tail -f /dev/null
 EOF
 
 5. Create docker-compose file
-============================================================
 user@server:/$ sudo nano /root/test/docker-compose.yml
 version: "3"
 services:
@@ -43,11 +38,9 @@ volumes:
     external: true
 
 6. As root run container with Compose
-============================================================
 root@server:~/test# docker-compose up -d 
 
 7. Test if it works
-============================================================
 user@server:/$ sleep 60 #wait for the docker image boots up
 user@server:/$ curl -X GET http://localhost:8080
 <html>
@@ -79,4 +72,3 @@ user@server:/$ sudo docker exec -ti `docker ps | grep "test:latest" | cut -d " "
   root@93ce0ace374a:/# exit
   exit
 
-user@server:/$ 
