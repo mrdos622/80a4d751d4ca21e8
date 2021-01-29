@@ -1,0 +1,12 @@
+version: "3"
+services:
+  test:
+    image: "test:latest"
+    volumes:
+      - "dbase:/var/lib/postgresql/11/main"
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+volumes:
+  dbase:
+    external: true
