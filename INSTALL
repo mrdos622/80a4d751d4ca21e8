@@ -6,7 +6,7 @@ user@server:/$ sudo apt update && sudo apt install docker.io docker-compose
 2. Create (Download) a script for the docker image setup
 ============================================================
 user@server:/$ sudo mkdir /root/test
-user@server:~/$ sudo nano /root/configure
+user@server:~/$ sudo nano /root/test/configure
 
 
 3. Create local volume for the database files 
